@@ -43,6 +43,7 @@ typedef uint16_t in_port_t;
 #include <algorithm>
 #include <stdexcept>
 #include <sstream>
+#include <cstddef>
 #include <cstring>
 
 namespace dht {
