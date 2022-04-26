@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2014-2020 Savoir-faire Linux Inc.
+ *  Copyright (C) 2014-2022 Savoir-faire Linux Inc.
  *  Author: Sébastien Blin <sebastien.blin@savoirfairelinux.com>
  *          Adrien Béraud <adrien.beraud@savoirfairelinux.com>
  *          Vsevolod Ivanov <vsevolod.ivanov@savoirfairelinux.com>
@@ -263,6 +263,7 @@ public:
     void dumpTables() const override {}
     std::vector<unsigned> getNodeMessageStats(bool) override { return {}; }
     void setStorageLimit(size_t) override {}
+    virtual size_t getStorageLimit() const { return 0; }
     void connectivityChanged(sa_family_t) override {
         getProxyInfos();
     }

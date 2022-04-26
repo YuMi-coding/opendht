@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2014-2020 Savoir-faire Linux Inc.
+ *  Copyright (C) 2014-2022 Savoir-faire Linux Inc.
  *  Author(s) : Adrien Béraud <adrien.beraud@savoirfairelinux.com>
  *              Simon Désaulniers <simon.desaulniers@savoirfairelinux.com>
  *
@@ -239,6 +239,41 @@ Value::toJson() const
     return val;
 }
 
+bool
+Value::checkSignature()
+{
+    if (!signatureChecked) {
+        signatureChecked = true;
+        if (isSigned()) {
+            signatureValid = owner and owner->checkSignature(getToSign(), signature);
+        } else {
+            signatureValid = true;
+        }
+    }
+    return signatureValid;
+}
+
+Sp<Value>
+Value::decrypt(const crypto::PrivateKey& key)
+{
+    if (not decrypted) {
+        decrypted = true;
+        if (isEncrypted()) {
+            auto decryptedBlob = key.decrypt(cypher);
+            std::unique_ptr<Value> v {new Value(id)};
+            auto msg = msgpack::unpack((const char*)decryptedBlob.data(), decryptedBlob.size());
+            v->msgpack_unpack_body(msg.get());
+            if (v->recipient != key.getPublicKey().getId())
+                throw crypto::DecryptError("Recipient mismatch");
+            // Ignore values belonging to other people
+            if (not v->owner or not v->owner->checkSignature(v->getToSign(), v->signature))
+                throw crypto::DecryptError("Signature mismatch");
+            decryptedValue = std::move(v);
+        }
+    }
+    return decryptedValue;
+}
+
 uint64_t
 unpackId(const Json::Value& json, const std::string& key) {
     uint64_t ret = 0;
@@ -406,8 +441,8 @@ void trim_str(std::string& str) {
     str = str.substr(first, last - first + 1);
 }
 
-Select::Select(const std::string& q_str) {
-    std::istringstream q_iss {q_str};
+Select::Select(std::string_view q_str) {
+    std::istringstream q_iss {std::string(q_str)};
     std::string token {};
     q_iss >> token;
 
@@ -431,8 +466,8 @@ Select::Select(const std::string& q_str) {
     }
 }
 
-Where::Where(const std::string& q_str) {
-    std::istringstream q_iss {q_str};
+Where::Where(std::string_view q_str) {
+    std::istringstream q_iss {std::string(q_str)};
     std::string token {};
     q_iss >> token;
     if (token == "WHERE" or token == "where") {
@@ -482,13 +517,13 @@ Query::msgpack_unpack(const msgpack::object& o)
 	if (o.type != msgpack::type::MAP)
 		throw msgpack::type_error();
 
-	auto rfilters = findMapValue(o, "w"); /* unpacking filters */
+	auto rfilters = findMapValue(o, "w"sv); /* unpacking filters */
 	if (rfilters)
         where.msgpack_unpack(*rfilters);
 	else
 		throw msgpack::type_error();
 
-	auto rfield_selector = findMapValue(o, "s"); /* unpacking field selectors */
+	auto rfield_selector = findMapValue(o, "s"sv); /* unpacking field selectors */
 	if (rfield_selector)
         select.msgpack_unpack(*rfield_selector);
 	else

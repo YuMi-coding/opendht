@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2014-2020 Savoir-faire Linux Inc.
+ *  Copyright (C) 2014-2022 Savoir-faire Linux Inc.
  *
  *  Author: Adrien Béraud <adrien.beraud@savoirfairelinux.com>
  *
@@ -48,7 +48,7 @@ ThreadPoolTester::testThreadPool() {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     pool.join();
-    CPPUNIT_ASSERT(count.load() == N);
+    CPPUNIT_ASSERT_EQUAL(N, count.load());
 }
 
 void

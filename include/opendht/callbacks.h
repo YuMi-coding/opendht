@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2014-2020 Savoir-faire Linux Inc.
+ *  Copyright (C) 2014-2022 Savoir-faire Linux Inc.
  *  Authors: Adrien Béraud <adrien.beraud@savoirfairelinux.com>
  *           Simon Désaulniers <simon.desaulniers@savoirfairelinux.com>
  *           Sébastien Blin <sebastien.blin@savoirfairelinux.com>
@@ -82,6 +82,8 @@ struct OPENDHT_PUBLIC NodeInfo {
     NodeStats ipv4 {};
     NodeStats ipv6 {};
     size_t ongoing_ops {0};
+    size_t storage_values {0};
+    size_t storage_size {0};
     in_port_t bound4 {0};
     in_port_t bound6 {0};
 
@@ -131,6 +133,9 @@ struct OPENDHT_PUBLIC Config {
 
     /* If non-0, overrides the default maximum store size. -1 means no limit.  */
     ssize_t max_store_size {0};
+
+    /* If non-0, overrides the default maximum store key count. -1 means no limit.  */
+    ssize_t max_store_keys {0};
 
     /**
      * Use appropriate bahavior for a public IP, stable node:

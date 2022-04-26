@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2014-2020 Savoir-faire Linux Inc.
+ *  Copyright (C) 2014-2022 Savoir-faire Linux Inc.
  *  Author: Sébastien Blin <sebastien.blin@savoirfairelinux.com>
  *          Adrien Béraud <adrien.beraud@savoirfairelinux.com>
  *          Vsevolod Ivanov <vsevolod.ivanov@savoirfairelinux.com>
@@ -38,6 +38,7 @@
 
 using namespace std::placeholders;
 using namespace std::chrono_literals;
+using namespace std::literals;
 
 namespace dht {
 constexpr char RESP_MSG_JSON_INCORRECT[] = "{\"err:\":\"Incorrect JSON\"}";
@@ -99,7 +100,7 @@ class DhtProxyServer::ConnectionListener
 {
 public:
     ConnectionListener() {};
-    ConnectionListener(std::function<void(restinio::connection_id_t)> onClosed) : onClosed_(std::move(onClosed)) {};
+    explicit ConnectionListener(std::function<void(restinio::connection_id_t)> onClosed) : onClosed_(std::move(onClosed)) {};
     ~ConnectionListener() {};
 
     /**
@@ -151,25 +152,25 @@ struct DhtProxyServer::RestRouterTraits : public restinio::default_traits_t
 void
 DhtProxyServer::PermanentPut::msgpack_unpack(const msgpack::object& o)
 {
-    if (auto cid = findMapValue(o, "cid")) {
+    if (auto cid = findMapValue(o, "cid"sv)) {
         clientId = cid->as<std::string>();
     }
-    if (auto exp = findMapValue(o, "exp")) {
+    if (auto exp = findMapValue(o, "exp"sv)) {
         expiration = from_time_t(exp->as<time_t>());
     }
-    if (auto token = findMapValue(o, "token")) {
+    if (auto token = findMapValue(o, "token"sv)) {
         pushToken = token->as<std::string>();
     }
-    if (auto sid = findMapValue(o, "sid")) {
+    if (auto sid = findMapValue(o, "sid"sv)) {
         if (not sessionCtx)
             sessionCtx = std::make_shared<PushSessionContext>(sid->as<std::string>());
         else
             sessionCtx->sessionId = sid->as<std::string>();
     }
-    if (auto t = findMapValue(o, "t")) {
+    if (auto t = findMapValue(o, "t"sv)) {
         type = t->as<PushType>();
     }
-    if (auto val = findMapValue(o, "value")) {
+    if (auto val = findMapValue(o, "value"sv)) {
         value = std::make_shared<dht::Value>(*val);
     }
 }
@@ -178,19 +179,19 @@ DhtProxyServer::PermanentPut::msgpack_unpack(const msgpack::object& o)
 void
 DhtProxyServer::Listener::msgpack_unpack(const msgpack::object& o)
 {
-    if (auto cid = findMapValue(o, "cid")) {
+    if (auto cid = findMapValue(o, "cid"sv)) {
         clientId = cid->as<std::string>();
     }
-    if (auto exp = findMapValue(o, "exp")) {
+    if (auto exp = findMapValue(o, "exp"sv)) {
         expiration = from_time_t(exp->as<time_t>());
     }
-    if (auto sid = findMapValue(o, "sid")) {
+    if (auto sid = findMapValue(o, "sid"sv)) {
         if (not sessionCtx)
             sessionCtx = std::make_shared<PushSessionContext>(sid->as<std::string>());
         else
             sessionCtx->sessionId = sid->as<std::string>();
     }
-    if (auto t = findMapValue(o, "t")) {
+    if (auto t = findMapValue(o, "t"sv)) {
         type = t->as<PushType>();
     }
 }
@@ -345,7 +346,7 @@ DhtProxyServer::loadState(Is& is, size_t size) {
         while (pac.next(oh)) {
             if (oh.get().type != msgpack::type::MAP)
                 continue;
-            if (auto puts = findMapValue(oh.get(), "puts")) {
+            if (auto puts = findMapValue(oh.get(), "puts"sv)) {
                 std::lock_guard<std::mutex> lock(lockSearchPuts_);
                 puts_ = puts->as<decltype(puts_)>();
                 if (logger_)
@@ -382,9 +383,9 @@ DhtProxyServer::loadState(Is& is, size_t size) {
                     logger_->d("No persistent puts in state");
             }
 #ifdef OPENDHT_PUSH_NOTIFICATIONS
-            if (auto listeners = findMapValue(oh.get(), "pushListeners")) {
+            if (auto pushListeners = findMapValue(oh.get(), "pushListeners"sv)) {
                 std::lock_guard<std::mutex> lock(lockListener_);
-                pushListeners_ = listeners->as<decltype(pushListeners_)>();
+                pushListeners_ = pushListeners->as<decltype(pushListeners_)>();
                 if (logger_)
                     logger_->d("Loading %zu push listeners", pushListeners_.size());
                 for (auto& pushListener : pushListeners_) {
@@ -683,9 +684,9 @@ DhtProxyServer::get(restinio::request_handle_t request,
 {
     requestNum_++;
     try {
-        InfoHash infoHash(params["hash"].to_string());
+        InfoHash infoHash(params["hash"]);
         if (!infoHash)
-            infoHash = InfoHash::get(params["hash"].to_string());
+            infoHash = InfoHash::get(params["hash"]);
         auto response = std::make_shared<ResponseByPartsBuilder>(
             initHttpResponse(request->create_response<ResponseByParts>()));
         response->flush();
@@ -714,9 +715,9 @@ DhtProxyServer::listen(restinio::request_handle_t request,
     requestNum_++;
 
     try {
-        InfoHash infoHash(params["hash"].to_string());
+        InfoHash infoHash(params["hash"]);
         if (!infoHash)
-            infoHash = InfoHash::get(params["hash"].to_string());
+            infoHash = InfoHash::get(params["hash"]);
         auto response = std::make_shared<ResponseByPartsBuilder>(
             initHttpResponse(request->create_response<ResponseByParts>()));
         response->flush();
@@ -750,9 +751,9 @@ DhtProxyServer::subscribe(restinio::request_handle_t request,
 {
     requestNum_++;
     try {
-        InfoHash infoHash(params["hash"].to_string());
+        InfoHash infoHash(params["hash"]);
         if (!infoHash)
-            infoHash = InfoHash::get(params["hash"].to_string());
+            infoHash = InfoHash::get(params["hash"]);
 
         std::string err;
         Json::Value r;
@@ -892,9 +893,9 @@ DhtProxyServer::unsubscribe(restinio::request_handle_t request,
 {
     requestNum_++;
 
-    InfoHash infoHash(params["hash"].to_string());
+    InfoHash infoHash(params["hash"]);
     if (!infoHash)
-        infoHash = InfoHash::get(params["hash"].to_string());
+        infoHash = InfoHash::get(params["hash"]);
 
     if (logger_)
         logger_->d("[proxy:server] [unsubscribe %s]", infoHash.toString().c_str());
@@ -1080,9 +1081,9 @@ DhtProxyServer::put(restinio::request_handle_t request,
                     restinio::router::route_params_t params)
 {
     requestNum_++;
-    InfoHash infoHash(params["hash"].to_string());
+    InfoHash infoHash(params["hash"]);
     if (!infoHash)
-        infoHash = InfoHash::get(params["hash"].to_string());
+        infoHash = InfoHash::get(params["hash"]);
 
     if (request->body().empty()){
         auto response = initHttpResponse(request->create_response(restinio::status_bad_request()));
@@ -1221,9 +1222,9 @@ DhtProxyServer::putSigned(restinio::request_handle_t request,
                           restinio::router::route_params_t params) const
 {
     requestNum_++;
-    InfoHash infoHash(params["hash"].to_string());
+    InfoHash infoHash(params["hash"]);
     if (!infoHash)
-        infoHash = InfoHash::get(params["hash"].to_string());
+        infoHash = InfoHash::get(params["hash"]);
 
     if (request->body().empty()){
         auto response = initHttpResponse(request->create_response(restinio::status_bad_request()));
@@ -1271,9 +1272,9 @@ DhtProxyServer::putEncrypted(restinio::request_handle_t request,
                              restinio::router::route_params_t params)
 {
     requestNum_++;
-    InfoHash infoHash(params["hash"].to_string());
+    InfoHash infoHash(params["hash"]);
     if (!infoHash)
-        infoHash = InfoHash::get(params["hash"].to_string());
+        infoHash = InfoHash::get(params["hash"]);
 
     if (request->body().empty()){
         auto response = initHttpResponse(request->create_response(restinio::status_bad_request()));
@@ -1343,10 +1344,10 @@ DhtProxyServer::getFiltered(restinio::request_handle_t request,
                             restinio::router::route_params_t params)
 {
     requestNum_++;
-    auto value = params["value"].to_string();
-    InfoHash infoHash(params["hash"].to_string());
+    auto query = params["value"];
+    InfoHash infoHash(params["hash"]);
     if (!infoHash)
-        infoHash = InfoHash::get(params["hash"].to_string());
+        infoHash = InfoHash::get(params["hash"]);
 
     try {
         auto response = std::make_shared<ResponseByPartsBuilder>(
@@ -1361,7 +1362,7 @@ DhtProxyServer::getFiltered(restinio::request_handle_t request,
             [response] (bool /*ok*/){
                 response->done();
             },
-            {}, value);
+            {}, query);
         return restinio::request_handling_status_t::accepted;
     } catch (const std::exception& e){
         return serverError(*request);

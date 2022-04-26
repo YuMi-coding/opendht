@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2014-2020 Savoir-faire Linux Inc.
+ *  Copyright (C) 2014-2022 Savoir-faire Linux Inc.
  *
  *  Author: Adrien Béraud <adrien.beraud@savoirfairelinux.com>
  *
@@ -35,9 +35,11 @@ DhtRunnerTester::setUp() {
     dht::DhtRunner::Config config;
     config.dht_config.node_config.max_peer_req_per_sec = -1;
     config.dht_config.node_config.max_req_per_sec = -1;
+    config.dht_config.node_config.max_store_size = -1;
+    config.dht_config.node_config.max_store_keys = -1;
 
-    node1.run(42222, config);
-    node2.run(42232, config);
+    node1.run(0, config);
+    node2.run(0, config);
     node2.bootstrap(node1.getBound());
 }
 
@@ -54,15 +56,17 @@ DhtRunnerTester::tearDown() {
     node1.shutdown(shutdown);
     node2.shutdown(shutdown);
     std::unique_lock<std::mutex> lk(cv_m);
-    CPPUNIT_ASSERT(cv.wait_for(lk, 12s, [&]{ return done == 2; }));
+    CPPUNIT_ASSERT(cv.wait_for(lk, 30s, [&]{ return done == 2u; }));
     node1.join();
     node2.join();
 }
 
 void
 DhtRunnerTester::testConstructors() {
-    CPPUNIT_ASSERT(node1.getBoundPort() == 42222);
-    CPPUNIT_ASSERT(node2.getBoundPort() == 42232);
+    CPPUNIT_ASSERT(node1.getBoundPort());
+    CPPUNIT_ASSERT_EQUAL(node1.getBoundPort(), node1.getBound().getPort());
+    CPPUNIT_ASSERT(node2.getBoundPort());
+    CPPUNIT_ASSERT_EQUAL(node2.getBoundPort(), node2.getBound().getPort());
 
     dht::DhtRunner::Config config {};
     dht::DhtRunner::Context context {};
@@ -91,33 +95,53 @@ DhtRunnerTester::testListen() {
     std::mutex mutex;
     std::condition_variable cv;
     std::atomic_uint valueCount(0);
+    std::atomic_uint valueCounta(0);
+    std::atomic_uint valueCountb(0);
+    std::atomic_uint valueCountc(0);
+    std::atomic_uint valueCountd(0);
+
     unsigned putCount(0);
-    unsigned putOkCount(0);
+    unsigned putOkCount1(0);
+    unsigned putOkCount2(0);
+    unsigned putOkCount3(0);
 
     auto a = dht::InfoHash::get("234");
     auto b = dht::InfoHash::get("2345");
     auto c = dht::InfoHash::get("23456");
     auto d = dht::InfoHash::get("234567");
-    constexpr unsigned N = 256;
+    constexpr unsigned N = 2048;
     constexpr unsigned SZ = 56 * 1024;
 
-    auto ftokena = node1.listen(a, [&](const std::shared_ptr<dht::Value>&) {
-        valueCount++;
+    auto ftokena = node1.listen(a, [&](const std::vector<std::shared_ptr<dht::Value>>& values, bool expired) {
+        if (expired)
+            valueCounta -= values.size();
+        else
+            valueCounta += values.size();
         return true;
     });
 
     auto ftokenb = node1.listen(b, [&](const std::shared_ptr<dht::Value>&) {
-        valueCount++;
+        /*if (expired)
+            valueCountb -= values.size();
+        else
+            valueCountb += values.size();*/
+        valueCountb++;
         return false;
     });
 
-    auto ftokenc = node1.listen(c, [&](const std::shared_ptr<dht::Value>&) {
-        valueCount++;
+    auto ftokenc = node1.listen(c, [&](const std::vector<std::shared_ptr<dht::Value>>& values, bool expired) {
+        if (expired)
+            valueCountc -= values.size();
+        else
+            valueCountc += values.size();
         return true;
     });
 
-    auto ftokend = node1.listen(d, [&](const std::shared_ptr<dht::Value>&) {
-        valueCount++;
+    auto ftokend = node1.listen(d, [&](const std::vector<std::shared_ptr<dht::Value>>& values, bool expired) {
+        if (expired)
+            valueCountd -= values.size();
+        else
+            valueCountd += values.size();
         return true;
     });
 
@@ -130,21 +154,21 @@ DhtRunnerTester::testListen() {
         node2.put(a, dht::Value("v1"), [&](bool ok) {
             std::lock_guard<std::mutex> lock(mutex);
             putCount++;
-            if (ok) putOkCount++;
+            if (ok) putOkCount1++;
             cv.notify_all();
         });
         node2.put(b, dht::Value("v2"), [&](bool ok) {
             std::lock_guard<std::mutex> lock(mutex);
             putCount++;
-            if (ok) putOkCount++;
+            if (ok) putOkCount2++;
             cv.notify_all();
         });
         auto bigVal = std::make_shared<dht::Value>();
         bigVal->data = mtu;
-        node2.put(c, bigVal, [&](bool ok) {
+        node2.put(c, std::move(bigVal), [&](bool ok) {
             std::lock_guard<std::mutex> lock(mutex);
             putCount++;
-            if (ok) putOkCount++;
+            if (ok) putOkCount3++;
             cv.notify_all();
         });
     }
@@ -152,7 +176,9 @@ DhtRunnerTester::testListen() {
     {
         std::unique_lock<std::mutex> lk(mutex);
         CPPUNIT_ASSERT(cv.wait_for(lk, 30s, [&]{ return putCount == N * 3u; }));
-        CPPUNIT_ASSERT_EQUAL(N * 3u, putOkCount);
+        CPPUNIT_ASSERT_EQUAL(N, putOkCount1);
+        CPPUNIT_ASSERT_EQUAL(N, putOkCount2);
+        CPPUNIT_ASSERT_EQUAL(N, putOkCount3);
     }
 
     CPPUNIT_ASSERT(ftokena.valid());
@@ -168,7 +194,10 @@ DhtRunnerTester::testListen() {
     CPPUNIT_ASSERT(tokena);
     CPPUNIT_ASSERT(tokenc);
     CPPUNIT_ASSERT(tokend);
-    CPPUNIT_ASSERT_EQUAL(N * 2u + 1u, valueCount.load());
+    CPPUNIT_ASSERT_EQUAL(N, valueCounta.load());
+    CPPUNIT_ASSERT_EQUAL(1u, valueCountb.load());
+    CPPUNIT_ASSERT_EQUAL(N, valueCountc.load());
+    CPPUNIT_ASSERT_EQUAL(0u, valueCountd.load());
 
     node1.cancelListen(a, tokena);
     node1.cancelListen(b, std::move(ftokenb));
@@ -198,6 +227,11 @@ DhtRunnerTester::testIdOps() {
     node2.join();
     node2.run(42232, config2, std::move(context2));
     node2.bootstrap(node1.getBound());
+
+    {
+        std::unique_lock<std::mutex> lk(mutex);
+        CPPUNIT_ASSERT(cv.wait_for(lk, 20s, [&]{ return valueCount == 1; }));
+    }
 
     node1.findCertificate(node2.getId(), [&](const std::shared_ptr<dht::crypto::Certificate>& crt){
         CPPUNIT_ASSERT(crt);

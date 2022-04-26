@@ -1,11 +1,11 @@
 # distutils: language = c++
-# distutils: extra_compile_args = -std=c++14
+# distutils: extra_compile_args = -std=c++17
 # distutils: include_dirs = ../../include
 # distutils: library_dirs = ../../src
 # distutils: libraries = opendht gnutls
 # cython: language_level=3
 #
-# Copyright (c) 2015-2019 Savoir-faire Linux Inc.
+# Copyright (c) 2015-2022 Savoir-faire Linux Inc.
 # Author(s): Guillaume Roguez <guillaume.roguez@savoirfairelinux.com>
 #            Adrien Béraud <adrien.beraud@savoirfairelinux.com>
 #            Simon Désaulniers <sim.desaulniers@gmail.com>

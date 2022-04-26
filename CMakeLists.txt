@@ -1,4 +1,16 @@
-cmake_minimum_required (VERSION 3.1)
+cmake_minimum_required (VERSION 3.10)
+if(POLICY CMP0065)
+  cmake_policy(SET CMP0065 NEW)
+endif()
+if(POLICY CMP0069)
+  cmake_policy(SET CMP0069 NEW)
+endif()
+if(POLICY CMP0073)
+  cmake_policy(SET CMP0073 NEW)
+endif()
+if(POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW)
+endif()
 project (opendht)
 
 include(CMakePackageConfigHelpers)
@@ -7,7 +19,7 @@ include(FindPkgConfig)
 include(cmake/CheckAtomic.cmake)
 
 set (opendht_VERSION_MAJOR 2)
-set (opendht_VERSION_MINOR 3.2)
+set (opendht_VERSION_MINOR 4.3)
 set (opendht_VERSION ${opendht_VERSION_MAJOR}.${opendht_VERSION_MINOR})
 set (PACKAGE_VERSION ${opendht_VERSION})
 set (VERSION "${opendht_VERSION}")
@@ -20,7 +32,6 @@ option (OPENDHT_PYTHON "Build Python bindings" OFF)
 option (OPENDHT_TOOLS "Build DHT tools" ON)
 option (OPENDHT_SYSTEMD "Install systemd module" OFF)
 option (OPENDHT_SYSTEMD_UNIT_FILE_LOCATION "Where to install systemd unit file")
-option (OPENDHT_LTO "Build with LTO" OFF)
 option (OPENDHT_SANITIZE "Build with address sanitizer and stack protector" OFF)
 option (OPENDHT_PROXY_SERVER "Enable DHT proxy server, use Restinio and jsoncpp" OFF)
 option (OPENDHT_PUSH_NOTIFICATIONS "Enable push notifications support" OFF)
@@ -38,6 +49,10 @@ find_package(Doxygen)
 option (OPENDHT_DOCUMENTATION "Create and install the HTML based API documentation (requires Doxygen)" ${DOXYGEN_FOUND})
 
 # Dependencies
+if (NOT HAVE_CXX_ATOMICS_WITHOUT_LIB)
+    link_libraries (atomic)
+endif ()
+
 list (APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 if (NOT MSVC)
     set (THREADS_PREFER_PTHREAD_FLAG TRUE)
@@ -45,7 +60,7 @@ if (NOT MSVC)
     find_package (PkgConfig REQUIRED)
     find_package (GnuTLS 3.3 REQUIRED)
     pkg_search_module (Nettle REQUIRED nettle)
-    find_package (Msgpack 1.2 REQUIRED)
+    find_package (msgpack REQUIRED)
     if (OPENDHT_TOOLS)
         find_package (Readline 6 REQUIRED)
     endif ()
@@ -113,7 +128,7 @@ if (OPENDHT_HTTP OR OPENDHT_PEER_DISCOVERY)
 endif()
 
 # Build flags
-set (CMAKE_CXX_STANDARD 14)
+set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED on)
 
 if (NOT MSVC)
@@ -131,7 +146,7 @@ else ()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${DISABLE_MSC_WARNINGS}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
 endif ()
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMSGPACK_DISABLE_LEGACY_NIL -DMSGPACK_DISABLE_LEGACY_CONVERT")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMSGPACK_NO_BOOST -DMSGPACK_DISABLE_LEGACY_NIL -DMSGPACK_DISABLE_LEGACY_CONVERT")
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -142,15 +157,6 @@ if (OPENDHT_LOG)
 else ()
     add_definitions(-DOPENDHT_LOG=false)
 endif()
-if (OPENDHT_LTO AND NOT MSVC)
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto")
-    if (CMAKE_COMPILER_IS_GNUCC)
-        set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fuse-linker-plugin")
-        set (CMAKE_AR        "gcc-ar")
-        set (CMAKE_NM        "gcc-nm")
-        set (CMAKE_RANLIB    "gcc-ranlib")
-    endif ()
-endif ()
 
 if (MSGPACK_INCLUDE_DIRS)
     include_directories (SYSTEM "${MSGPACK_INCLUDE_DIRS}")
@@ -397,15 +403,23 @@ if (OPENDHT_SHARED)
 endif ()
 
 if (OPENDHT_C)
-    add_library (opendht-c SHARED
-        c/opendht.cpp
-        c/opendht_c.h
-    )
-    target_compile_definitions(opendht-c PRIVATE OPENDHT_C_BUILD)
     if (OPENDHT_SHARED)
-        target_link_libraries(opendht-c opendht)
-    else ()
-        target_link_libraries(opendht-c opendht-static)
+        add_library (opendht-c SHARED
+            c/opendht.cpp
+            c/opendht_c.h
+        )
+        target_compile_definitions(opendht-c PRIVATE OPENDHT_C_BUILD)
+        target_link_libraries(opendht-c PRIVATE opendht)
+        install (TARGETS opendht-c DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT opendht-c)
+    endif ()
+
+    if (OPENDHT_STATIC)
+        add_library (opendht-c-static STATIC
+            c/opendht.cpp
+            c/opendht_c.h
+        )
+        target_link_libraries(opendht-c-static PRIVATE opendht-static)
+        install (TARGETS opendht-c-static DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT opendht-c-static)
     endif ()
 
     # PkgConfig module
@@ -414,8 +428,8 @@ if (OPENDHT_C)
         opendht-c.pc
         @ONLY
     )
-    install (TARGETS opendht-c DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT opendht-c)
     install (FILES ${CMAKE_CURRENT_BINARY_DIR}/opendht-c.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+    install (FILES c/opendht_c.h DESTINATION ${CMAKE_INSTALL_PREFIX}/include/opendht)
 endif ()
 
 if (OPENDHT_TOOLS)

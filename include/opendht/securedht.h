@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2014-2020 Savoir-faire Linux Inc.
+ *  Copyright (C) 2014-2022 Savoir-faire Linux Inc.
  *  Authors: Adrien Béraud <adrien.beraud@savoirfairelinux.com>
  *           Simon Désaulniers <simon.desaulniers@savoirfairelinux.com>
  *           Sébastien Blin <sebastien.blin@savoirfairelinux.com>
@@ -173,6 +173,10 @@ public:
     void setStorageLimit(size_t limit = DEFAULT_STORAGE_LIMIT) override {
         dht_->setStorageLimit(limit);
     }
+    size_t getStorageLimit() const override {
+        return dht_->getStorageLimit();
+    }
+
     std::vector<NodeExport> exportNodes() const override {
         return dht_->exportNodes();
     }

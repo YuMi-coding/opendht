@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2014-2020 Savoir-faire Linux Inc.
+ *  Copyright (C) 2014-2022 Savoir-faire Linux Inc.
  *  Author: Sébastien Blin <sebastien.blin@savoirfairelinux.com>
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -221,6 +221,7 @@ public:
      * Set the in-memory storage limit in bytes
      */
     virtual void setStorageLimit(size_t limit = DEFAULT_STORAGE_LIMIT) = 0;
+    virtual size_t getStorageLimit() const = 0;
 
     /**
      * Returns the total memory usage of stored values and the number
