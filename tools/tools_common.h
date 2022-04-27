@@ -166,8 +166,9 @@ getDhtConfig(dht_params& params)
     config.dht_config.node_id = params.node_id;
     if(config.dht_config.node_id.size() < 2*HASH_LEN)
     {
-        __u32 diff_len = 2*HASH_LEN - config.dht_config.node_id.size();
-        for(__u32 i = 0; i< diff_len; i++)
+        int diff_len = 2*HASH_LEN - config.dht_config.node_id.size();
+        int i;
+        for(i = 0; i< diff_len; i++)
             config.dht_config.node_id = "0" + config.dht_config.node_id;
     }
     std::cout << "Reading node id from params " << params.node_id<< std::endl;
