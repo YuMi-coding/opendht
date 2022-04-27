@@ -41,7 +41,7 @@ public:
     {
         auto c = conf.node_config;
         //YM: assign node id from params
-        std::cout << "Node ID from config " << conf.node_id<< endl;
+        std::cout << "Node ID from config " << conf.node_id<< std::endl;
         if (not conf.node_id.empty())
             c.node_id = InfoHash(conf.node_id);
         if (not c.node_id and conf.id.second)
