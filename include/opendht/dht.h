@@ -324,7 +324,7 @@ private:
     /* When performing a search, we search for up to SEARCH_NODES closest nodes
        to the destination, and use the additional ones to backtrack if any of
        the target 8 turn out to be dead. */
-    static constexpr unsigned SEARCH_NODES {14};
+    static constexpr unsigned SEARCH_NODES {5}; //YM: Change this from 14 to test replication efficiency
 
     /* The number of bad nodes is limited in order to help determine
      * presence of connectivity changes. See
