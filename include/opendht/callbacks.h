@@ -152,6 +152,7 @@ struct OPENDHT_PUBLIC SecureDhtConfig
 {
     Config node_config {};
     crypto::Identity id {};
+    std::string node_id {}; // YM: the node id, which is not the private key pairs
 
     /**
      * Cache all encountered public keys and certificates,

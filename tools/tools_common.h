@@ -139,6 +139,7 @@ struct dht_params {
     std::string privkey_pwd {};
     std::string proxy_privkey_pwd {};
     std::string save_identity {};
+    std::string node_id {};
     bool no_rate_limit {false};
     bool public_stable {false};
 };
@@ -162,6 +163,7 @@ getDhtConfig(dht_params& params)
     config.dht_config.node_config.public_stable = params.public_stable;
     config.dht_config.id = params.id;
     config.dht_config.cert_cache_all = static_cast<bool>(params.id.first);
+    config.dht_config.node_id = params.node_id;
     config.threaded = true;
     config.proxy_server = params.proxyclient;
     config.push_node_id = "dhtnode";
@@ -229,6 +231,7 @@ static const constexpr struct option long_options[] = {
     {"proxyclient",             required_argument, nullptr, 'C'},
     {"pushserver",              required_argument, nullptr, 'y'},
     {"devicekey",               required_argument, nullptr, 'z'},
+    {"node-id",                 required_argument, nullptr, 'O'},
     {"version",                 no_argument      , nullptr, 'V'},
     {nullptr,                   0                , nullptr,  0}
 };
@@ -347,6 +350,9 @@ parseArgs(int argc, char **argv) {
             break;
         case 'I':
             params.save_identity = optarg;
+            break;
+        case 'O':
+            params.node_id = optarg;
             break;
         default:
             break;
