@@ -94,6 +94,7 @@ void print_help() {
               << "  cl <key> <token>      Cancel listen for <token> and <key>." << std::endl
               << "  p <key> <str>         Put string value at <key>." << std::endl
               << "  pp <key> <str>        Put string value at <key> (persistent version)." << std::endl
+              << "  ph <hash> <str>       Put string value at <hash> (allow assigning hash to key)."<< std::endl // YM: Add docstring
               << "  cpp <key> <id>        Cancel persistent put operation for <key> and value <id>." << std::endl
               << "  s <key> <str>         Put string value at <key>, signed with our generated private key." << std::endl
               << "  e <key> <dest> <str>  Put string value at <key>, encrypted for <dest> with its public key (if found)." << std::endl
@@ -276,7 +277,7 @@ void cmd_loop(std::shared_ptr<DhtRunner>& node, dht_params& params
         if (op.empty())
             continue;
 
-        static const std::set<std::string> VALID_OPS {"g", "l", "cl", "il", "ii", "p", "pp", "cpp", "s", "e", "a",  "q"};
+        static const std::set<std::string> VALID_OPS {"g", "l", "cl", "il", "ii", "p", "pp", "ph", "cpp", "s", "e", "a",  "q"}; // YM: Add operation "ph"
         if (VALID_OPS.find(op) == VALID_OPS.cend()) {
             std::cout << "Unknown command: " << op << std::endl;
             std::cout << " (type 'h' or 'help' for a list of possible commands)" << std::endl;
