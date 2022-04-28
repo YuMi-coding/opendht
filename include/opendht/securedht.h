@@ -40,10 +40,12 @@ public:
     static dht::Config getConfig(const SecureDht::Config& conf)
     {
         auto c = conf.node_config;
+
         //YM: assign node id from params
         // std::cout << "Node ID from config " << conf.node_id<< std::endl;
         if (not conf.node_id.empty())
             c.node_id = InfoHash(conf.node_id);
+
         if (not c.node_id and conf.id.second)
             c.node_id = InfoHash::get("node:"+conf.id.second->getId().toString());
         return c;

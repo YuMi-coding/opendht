@@ -414,6 +414,35 @@ void cmd_loop(std::shared_ptr<DhtRunner>& node, dht_params& params
                 std::cout.flags(flags);
             }, time_point::max(), true);
         }
+        else if (op == "ph") // YM: Put a value with given hash id
+        {
+            std::string direct_str = idstr;
+            if(direct_str.size() < 2*HASH_LEN)
+            {
+                int diff_len = 2*HASH_LEN - direct_str.size();
+                int i;
+                for(i = 0; i< diff_len; i++)
+                    direct_str = "0" + direct_str;
+            }
+            dht::InfoHash direct_id = dht::InfoHash(direct_str);
+            if (not direct_id) {
+                std::cerr << "Syntax error: invalid InfoHash." << std::endl;
+                continue;
+            }
+            std::string v;
+            iss >> v;
+            auto value = std::make_shared<dht::Value>(
+                dht::ValueType::USER_DATA.id,
+                std::vector<uint8_t> {v.begin(), v.end()}
+            );
+            value->user_type = "text/plain";
+            node->put(id, value, [start, value](bool ok) {
+                auto end = std::chrono::high_resolution_clock::now();
+                auto flags(std::cout.flags());
+                std::cout << "Put: " << (ok ? "success" : "failure") << ", took " << print_duration(end-start) << ". Value ID: " << std::hex << value->id << std::endl;
+                std::cout.flags(flags);
+            }, time_point::max(), true);
+        }
         else if (op == "cpp") {
             std::string rem;
             iss >> rem;

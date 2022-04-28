@@ -163,6 +163,8 @@ getDhtConfig(dht_params& params)
     config.dht_config.node_config.public_stable = params.public_stable;
     config.dht_config.id = params.id;
     config.dht_config.cert_cache_all = static_cast<bool>(params.id.first);
+
+    // YM: node id padding front zeros
     config.dht_config.node_id = params.node_id;
     if(config.dht_config.node_id.size() < 2*HASH_LEN)
     {
@@ -171,7 +173,8 @@ getDhtConfig(dht_params& params)
         for(i = 0; i< diff_len; i++)
             config.dht_config.node_id = "0" + config.dht_config.node_id;
     }
-    std::cout << "Reading node id from params " << params.node_id<< std::endl;
+    // std::cout << "Reading node id from params " << params.node_id<< std::endl;
+
     config.threaded = true;
     config.proxy_server = params.proxyclient;
     config.push_node_id = "dhtnode";
